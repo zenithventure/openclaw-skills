@@ -56,6 +56,8 @@ git config --global credential.helper store
 Note the exact path — you'll need it.
 
 ### 3. Create the Cron Job
+
+**Preferred method (if CLI works):**
 ```bash
 openclaw cron add \
   --name "email-check" \
@@ -68,7 +70,16 @@ openclaw cron add \
   --message "$(cat /path/to/cron-prompt.txt)"
 ```
 
-See `references/cron-prompt.md` for the full prompt template.
+**Fallback method (if CLI WebSocket fails):**
+
+If `openclaw cron add` fails with "gateway closed" or "handshake timeout":
+
+1. Stop the gateway: `systemctl --user stop openclaw-gateway`
+2. Create `~/.openclaw/cron/jobs.json` manually (see `references/cron-jobs-example.json`)
+3. Restart gateway: `systemctl --user start openclaw-gateway`
+4. Verify: `tail -f /tmp/openclaw/openclaw-*.log | grep cron`
+
+**Important:** The `message` field must use `\n` escape sequences, not literal newlines, or JSON5 parsing will fail.
 
 ### 4. Keep HEARTBEAT.md Lightweight
 The cron handles email. Heartbeat should only contain tasks that need main-session context (e.g., PR monitoring).

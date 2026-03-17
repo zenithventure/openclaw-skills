@@ -2,6 +2,41 @@
 
 Real failure modes encountered and their fixes.
 
+## WebSocket CLI↔Gateway Connection Failure
+
+**Problem:** `openclaw cron add` and other CLI commands fail with "gateway closed (1000)" or "handshake timeout".
+**Symptom:** Gateway is running (HTTP works, Telegram works), but CLI commands fail to connect via WebSocket.
+**Cause:** WebSocket handshake between CLI and gateway times out after ~3 seconds. Root cause unclear — may be resource/binding issue on some hosts.
+**Fix:** Edit cron jobs directly:
+1. Stop gateway: `systemctl --user stop openclaw-gateway`
+2. Edit `~/.openclaw/cron/jobs.json` manually
+3. Restart gateway: `systemctl --user start openclaw-gateway`
+4. Verify in logs: `tail -f /tmp/openclaw/openclaw-*.log | grep cron`
+**Note:** This only affects CLI↔Gateway communication. Cron jobs, Telegram, and gateway core functions work fine.
+
+## Cron jobs.json Parse Errors
+
+**Problem:** Cron fails to start with "Failed to parse cron store" error.
+**Symptom:** `SyntaxError: JSON5: invalid character '\n' at line X` in gateway logs.
+**Cause:** Literal newlines in the `message` string field. OpenClaw uses JSON5 parser which doesn't accept actual newlines in string values.
+**Fix:** Use `\n` escape sequences in JSON strings, not literal newlines:
+```json
+"message": "Line 1\nLine 2\nLine 3"
+```
+**Not:**
+```json
+"message": "Line 1
+Line 2
+Line 3"
+```
+
+## Manual Cron Job State
+
+**Problem:** Cron job timer keeps re-arming but never fires.
+**Symptom:** Logs show `cron: timer armed` every minute but `nextAt` never changes, job never executes.
+**Cause:** Manually setting `state.nextRunAtMs` in jobs.json can confuse the scheduler.
+**Fix:** When creating jobs manually, omit the `state` object entirely. OpenClaw will initialize it correctly on first load.
+
 ## Cron Delivery
 
 **Problem:** Cron runs successfully but notifications never reach Telegram.
