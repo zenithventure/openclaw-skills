@@ -4,7 +4,7 @@
     {
       "id": "email-check-001",
       "name": "email-check",
-      "description": "Check email + GitHub for ticket assignments (fire-and-forget)",
+      "description": "Check email + GitHub for ticket assignments (ACP fire-and-forget)",
       "enabled": true,
       "schedule": {
         "kind": "every",
@@ -14,7 +14,7 @@
       "wakeMode": "now",
       "payload": {
         "kind": "agentTurn",
-        "message": "You are <AGENT_NAME>. Check support email AND poll GitHub for ticket assignments. FIRE-AND-FORGET: spawn subagents and exit immediately. Do NOT wait for subagents to complete.\n\n## Step 1: Check email\nConnect to <IMAP_HOST>:993 as <EMAIL_USER> (password from .env EMAIL_PASSWORD). Fetch UNSEEN emails, mark read. Extract GitHub issue URLs from assignment emails. Add to to_process list.\n\n## Step 2: Poll GitHub\nUsing GITHUB_TOKEN from .env, GET https://api.github.com/search/issues?q=assignee:<BOT_GITHUB_USERNAME>+state:open+is:issue. Check memory/support-tickets.json to avoid duplicates. Add new issues to to_process list.\n\n## Step 3: ANNOUNCE FIRST (before spawning)\nIn YOUR reply, announce what you found and will dispatch:\n- 'Email: N tickets found'\n- 'GitHub: N issues found'\n- 'Dispatching: <issue URLs>'\nThis announcement is what gets delivered to Telegram.\n\n## Step 4: Spawn subagents (fire-and-forget)\nFor EACH issue, spawn a subagent with sessions_spawn:\n- runtime: subagent\n- runTimeoutSeconds: 1800\n- task: Full ticket handling instructions (analyze, implement, PR)\n- DO NOT wait for results. Just spawn and move on.\n\n## Step 5: Log and exit\nUpdate memory/support-tickets.json with dispatched issues. Append to memory/heartbeat-log.jsonl. Exit immediately.\n\nIf nothing found: reply HEARTBEAT_OK",
+        "message": "You are <AGENT_NAME>. Check support email AND poll GitHub for ticket assignments. FIRE-AND-FORGET: spawn ACP sessions and exit immediately. Do NOT wait for results.\n\n## Step 1: Check email\nConnect to <IMAP_HOST>:993 as <EMAIL_USER> (password from .env EMAIL_PASSWORD). Fetch UNSEEN emails, mark read. Extract GitHub issue URLs from assignment emails. Add to to_process list.\n\n## Step 2: Poll GitHub\nUsing GITHUB_TOKEN from .env, GET https://api.github.com/search/issues?q=assignee:<BOT_GITHUB_USERNAME>+state:open+is:issue. Check memory/support-tickets.json to avoid duplicates. Add new issues to to_process list.\n\n## Step 3: ANNOUNCE FIRST (before spawning)\nIn YOUR reply, announce what you found and will dispatch:\n- 'Email: N tickets found'\n- 'GitHub: N issues found'\n- 'Dispatching: <issue URLs>'\nThis announcement is what gets delivered to Telegram.\n\n## Step 4: Spawn ACP sessions (fire-and-forget)\nFor EACH issue, use sessions_spawn:\n- runtime: acp\n- agentId: claude\n- mode: run\n- task: Full ticket handling instructions (analyze, implement, PR, notify)\n- DO NOT wait for results. Just spawn and move on.\n\n## Step 5: Log and exit\nUpdate memory/support-tickets.json with dispatched issues. Append to memory/heartbeat-log.jsonl. Exit immediately.\n\nIf nothing found: reply HEARTBEAT_OK",
         "timeoutSeconds": 120
       },
       "delivery": {

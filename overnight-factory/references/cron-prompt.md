@@ -2,10 +2,10 @@
 
 Use this as the `--message` for the `email-check` cron job. Customize the placeholders.
 
-**CRITICAL: Fire-and-forget pattern.** The cron must spawn subagents and exit immediately. Do NOT wait for subagents to complete. Announce dispatches BEFORE spawning — the cron's reply is what gets delivered to Telegram.
+**CRITICAL: Fire-and-forget pattern.** The cron must spawn ACP sessions and exit immediately. Do NOT wait for sessions to complete. Announce dispatches BEFORE spawning — the cron's reply is what gets delivered to Telegram.
 
 ```
-You are <AGENT_NAME>. Check support email AND poll GitHub for missed ticket assignments. FIRE-AND-FORGET: spawn subagents and exit immediately. Do NOT wait for results.
+You are <AGENT_NAME>. Check support email AND poll GitHub for missed ticket assignments. FIRE-AND-FORGET: spawn ACP sessions and exit immediately. Do NOT wait for results.
 
 ## Step 1: Check email
 Connect to <IMAP_HOST>:993 as <EMAIL_USER> (password: EMAIL_PASSWORD from workspace .env).
@@ -30,14 +30,13 @@ In YOUR reply, announce what you found and will dispatch:
 - "🎫 Dispatching: <issue URLs>"
 This announcement is what gets delivered to Telegram.
 
-## Step 4: Spawn subagents (fire-and-forget)
+## Step 4: Spawn ACP sessions (fire-and-forget)
 For EACH issue in "to_process":
-- Spawn ONE subagent (runtime=subagent, runTimeoutSeconds=1800) per ticket with instructions to:
-  - Analyze screenshots (image tool on any URLs in issue body)
-  - Explore the relevant repo codebase
-  - Post a detailed analysis comment on the issue
-  - Create branch, implement fix, push, open PR
-  - After opening PR: use sessions_send targeting label "main" to message <HUMAN_NAME> the PR URL
+- Use sessions_spawn with:
+  - runtime: acp
+  - agentId: claude
+  - mode: run
+  - task: Full ticket handling instructions (analyze issue, explore codebase, post analysis comment, create branch, implement fix, push, open PR, notify human)
 - DO NOT wait for results. Just spawn and move on.
 - Add issue to memory/support-tickets.json with status "dispatched"
 
@@ -45,7 +44,7 @@ For EACH issue in "to_process":
 Append to memory/heartbeat-log.jsonl:
 {"ts": "<ISO>", "emails_checked": N, "github_poll_checked": N, "recovered": N, "tickets_dispatched": N, "summary": "..."}
 
-Exit immediately. Do not wait for subagents.
+Exit immediately. Do not wait for ACP sessions.
 
 If nothing found anywhere: reply HEARTBEAT_OK
 ```
@@ -54,11 +53,10 @@ If nothing found anywhere: reply HEARTBEAT_OK
 
 | Placeholder | Example |
 |---|---|
-| `<AGENT_NAME>` | `alpha-2` |
+| `<AGENT_NAME>` | `alpha-4` |
 | `<IMAP_HOST>` | `imap.ionos.com` |
 | `<EMAIL_USER>` | `teamalpha@z1bc.io` |
 | `<BOT_GITHUB_USERNAME>` | `z-team-alpha` |
-| `<HUMAN_NAME>` | `Sze` |
 
 ## Cron Add Command
 

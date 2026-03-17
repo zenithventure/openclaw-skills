@@ -1,20 +1,21 @@
-# Ticket Pipeline: Subagent Instructions
+# Ticket Pipeline: ACP Session Instructions
 
-When dispatching a subagent to handle a ticket, include these instructions:
+When dispatching an ACP session to handle a ticket, include these instructions:
 
-## Subagent Task Template
+## ACP Session Task Template
+
+Use this as the `task` field in `sessions_spawn`:
 
 ```
 You are handling ticket <TICKET-ID> for <AGENT_NAME>.
 
 **Issue:** <GITHUB_ISSUE_URL>
-**Repo:** <LOCAL_REPO_PATH> (clone if missing)
-**GitHub token:** Read GITHUB_TOKEN from workspace .env
+**Repo:** Clone from GitHub as needed (use GITHUB_TOKEN from workspace .env for auth)
 **Git identity:** <BOT_NAME> <<BOT_EMAIL>>
 
 ## Step 1: Understand the ticket
 - Fetch the full issue from GitHub API
-- If there are screenshot URLs in the issue body, analyze them with the image tool
+- If there are screenshot URLs in the issue body, analyze them
 - Read the relevant files in the codebase to understand the context
 
 ## Step 2: Post analysis comment
@@ -36,14 +37,33 @@ Post a comment on the GitHub issue with:
 - PR body: "Closes #<issue-number>\n\n<brief description of changes>"
 
 ## Step 5: Notify
-- Write PR URL to memory/<ticket-id>-pr.txt
-- Use sessions_send tool targeting label "main" with: "🏭 <TICKET-ID> PR ready: <PR_URL> — <one-line summary>"
-- Output: PR_URL=<url>
+After opening PR, use sessions_send tool:
+- target: label "main"
+- message: "🏭 <TICKET-ID> PR ready: <PR_URL> — <one-line summary>"
 ```
+
+## Spawning an ACP Session
+
+Use `sessions_spawn` with these parameters:
+
+```json
+{
+  "runtime": "acp",
+  "agentId": "claude",
+  "mode": "run",
+  "task": "<task template from above>"
+}
+```
+
+**Key points:**
+- `runtime: "acp"` — uses the ACP backend (acpx)
+- `agentId: "claude"` — spawns a Claude Code session
+- `mode: "run"` — one-shot session (fire-and-forget)
+- No need to wait — ACP sessions run asynchronously
 
 ## Repo Management
 
-Clone repos on demand, keep them in `workspace/repos/<repo-name>`:
+ACP sessions have full access to the filesystem. They can clone repos on demand:
 
 ```bash
 cd workspace/repos
@@ -51,12 +71,11 @@ git clone https://<BOT_USERNAME>:${GITHUB_TOKEN}@github.com/<ORG>/<REPO>.git
 cd <REPO>
 git config user.name "<BOT_NAME>"
 git config user.email "<BOT_EMAIL>"
-git remote set-url origin https://<BOT_USERNAME>:${GITHUB_TOKEN}@github.com/<ORG>/<REPO>.git
 ```
 
 ## State Tracking
 
-Update `memory/support-tickets.json` after each dispatch:
+Update `memory/support-tickets.json` after each dispatch (from the cron, before spawning):
 
 ```json
 [
@@ -64,13 +83,21 @@ Update `memory/support-tickets.json` after each dispatch:
     "ticket_id": "TD-0015",
     "email_from": "user@example.com",
     "issue_url": "https://github.com/org/repo/issues/2",
-    "pr_url": "https://github.com/org/repo/pull/3",
-    "status": "pr_open",
+    "pr_url": null,
+    "status": "dispatched",
     "created_at": "2026-03-14T23:00:00Z"
   }
 ]
 ```
 
 Status values: `dispatched` → `pr_open` → `merged`
+
+The ACP session will update `pr_url` when it opens the PR.
+
+## Notification Flow
+
+1. Cron announces dispatch to Telegram (reliable)
+2. ACP session runs Claude Code to handle the ticket
+3. ACP session uses `sessions_send` to notify when PR is ready (best-effort)
 
 TinyDesk (or equivalent) handles user-facing notifications on merge. No need to email the submitter.
